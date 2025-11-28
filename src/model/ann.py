@@ -79,49 +79,53 @@ def predict_next_n_days(model, scaler, df, feature_cols, window_size=30, n_days=
 
     df = df.copy()
 
-    # Scale features
     features = df[feature_cols].astype("float64").values
     scaled_features = scaler.feature_scaler.transform(features)
 
-    # Last window
     current_window = scaled_features[-window_size:].reshape(
         1, window_size, len(feature_cols)
     )
 
     predictions = []
 
-    # Index of Close in features
+    # index of Close
     try:
         close_idx = feature_cols.index("Close")
     except ValueError:
         raise Exception("❌ 'Close' must be included in feature_cols for forecasting.")
 
-    for _ in range(n_days):
+    # scaler bounds
+    min_val = scaler.target_scaler.data_min_[0]
+    max_val = scaler.target_scaler.data_max_[0]
 
-        # Predict next step (scaled)
+    for _ in range(n_days):
         pred_scaled = model.predict(current_window, verbose=0)[0][0]
 
-        # ---- SAFETY CHECK ----
+        # numeric safety
         if pred_scaled is None or np.isnan(pred_scaled) or np.isinf(pred_scaled):
             pred_scaled = 0.0
 
-        # Convert to correct shape for inverse_transform
-        pred_scaled_arr = np.array(pred_scaled, dtype="float64").reshape(-1, 1)
+        # 🔥 CLIP to scaler limits (prevents ALL sklearn errors)
+        pred_scaled = float(np.clip(pred_scaled, min_val, max_val))
 
-        # ---- FIX: Proper inverse_transform ---
+        pred_scaled_arr = np.array([[pred_scaled]], dtype="float64")
+
         pred_unscaled = scaler.target_scaler.inverse_transform(pred_scaled_arr)[0][0]
-
         predictions.append(pred_unscaled)
 
-        # Build next window
+        # build next window
         new_row_scaled = current_window[:, -1, :].copy().reshape(1, -1)
         new_row_scaled[0, close_idx] = pred_scaled
 
         current_window = np.concatenate(
-            [current_window[:, 1:, :], new_row_scaled.reshape(1, 1, len(feature_cols))],
-            axis=1
+            [
+                current_window[:, 1:, :],
+                new_row_scaled.reshape(1, 1, len(feature_cols)),
+            ],
+            axis=1,
         )
 
+    # dates
     future_dates = pd.date_range(
         df.index[-1] + pd.Timedelta(days=1),
         periods=n_days
@@ -132,4 +136,3 @@ def predict_next_n_days(model, scaler, df, feature_cols, window_size=30, n_days=
         "y_true": [None] * n_days,
         "y_pred": predictions
     })
-
