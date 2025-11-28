@@ -139,21 +139,29 @@ def plot_pred_vs_actual(df_plot):
 
     fig = go.Figure()
 
-    # ----------------------------
-    # 1. Add Actual Line (if exists)
-    # ----------------------------
-    if "y_true" in df_plot.columns and df_plot["y_true"].notna().any():
-        fig.add_trace(go.Scatter(
-            x=df_plot["Date"],
-            y=df_plot["y_true"],
-            mode="lines",
-            name="Actual",
-            line=dict(color="blue")
-        ))
+    # ------------------------------------------------
+    # SAFE COLUMN CHECK (does not access the column)
+    # ------------------------------------------------
+    has_y_true = "y_true" in df_plot.columns
 
-    # ----------------------------
-    # 2. Always Add Prediction Line
-    # ----------------------------
+    # ------------------------------------------------
+    # 1. Add Actual Line ONLY if column exists
+    # ------------------------------------------------
+    if has_y_true:
+        try:
+            fig.add_trace(go.Scatter(
+                x=df_plot["Date"],
+                y=df_plot["y_true"],
+                mode="lines",
+                name="Actual",
+                line=dict(color="blue")
+            ))
+        except Exception:
+            pass  # Even if plotting fails, don't crash
+
+    # ------------------------------------------------
+    # 2. Always Add Predicted Line
+    # ------------------------------------------------
     fig.add_trace(go.Scatter(
         x=df_plot["Date"],
         y=df_plot["y_pred"],
@@ -169,4 +177,5 @@ def plot_pred_vs_actual(df_plot):
     )
 
     return fig
+
 
