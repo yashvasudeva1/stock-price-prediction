@@ -157,8 +157,8 @@ elif page == "EDA":
     # 3. TRADING DAY INFO
     # ===========================================
     st.subheader("📅 3. Trading Day Info")
-    st.json(trading_day_info(df), expanded=True)
-
+    td_df = pd.DataFrame([trading_day_info(df)])
+    st.dataframe(td_df)
     # ===========================================
     # 4. DAILY RETURN STATS
     # ===========================================
