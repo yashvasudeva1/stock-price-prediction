@@ -5,7 +5,7 @@ import pandas as pd
 # ---------------------------
 # IMPORTING YOUR MODULES
 # ---------------------------
-from src/preprocessing/clean_data.py import load_and_clean_stock
+from src/preprocessing/clean_data import load_and_clean_stock
 from src/eda/analytics/create_essential_columns.py import add_essential_columns
 from src/eda/eda import (
     dataset_summary,
@@ -18,7 +18,7 @@ from src/eda/eda import (
     volume_spikes,
     trend_streaks
 )
-from src/visualisations/create_visualisations.py import (
+from src/visualisations/create_visualisations import (
     plot_close_price,
     plot_candlestick,
     plot_volume,
@@ -27,7 +27,7 @@ from src/visualisations/create_visualisations.py import (
     plot_macd,
     plot_pred_vs_actual
 )
-from src/model/ann.py import (
+from src/model/ann import (
     build_regression_ann,
     create_windowed_dataset,
     ScalerWrapper
