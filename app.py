@@ -274,9 +274,12 @@ elif page == "Predictions":
     window_size = st.session_state.get("window_size")
     forecast_days = st.session_state.get("forecast_days")
 
-    if None in (df, model, scaler, feature_cols, window_size, forecast_days):
+    required_items = [df, model, scaler, feature_cols, window_size, forecast_days]
+
+    if any(item is None for item in required_items):
         st.warning("⚠ Train the ANN model first.")
         st.stop()
+
 
     st.write(f"Model will predict **{forecast_days} future days** at once.")
 
