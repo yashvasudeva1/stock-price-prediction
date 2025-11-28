@@ -77,51 +77,52 @@ def predict_next_n_days(model, scaler, df, feature_cols, window_size=30, n_days=
 
     df = df.copy()
 
-    # Scale the features
     features = df[feature_cols].values
     scaled_features = scaler.feature_scaler.transform(features)
 
-    # Prepare last window
     current_window = scaled_features[-window_size:].reshape(
         1, window_size, len(feature_cols)
     )
 
     predictions = []
 
-    # Index of "Close"
+    # Get index of "Close"
     try:
         close_idx = feature_cols.index("Close")
     except ValueError:
-        raise Exception("❌ 'Close' must be included in feature_cols.")
+        raise Exception("❌ 'Close' must be included in feature_cols for forecasting.")
 
-    # FORECAST LOOP
     for _ in range(n_days):
 
-        # Predict next day's Close (scaled)
+        # Scaled prediction
         pred_scaled = model.predict(current_window, verbose=0)[0][0]
 
-        # Convert to actual Close value
+        # --------------------------------------------
+        # SAFETY FIX → replace NaN or invalid values
+        # --------------------------------------------
+        if pred_scaled is None or np.isnan(pred_scaled) or np.isinf(pred_scaled):
+            pred_scaled = 0.0
+
+        # Convert to real scale
         pred_unscaled = scaler.target_scaler.inverse_transform(
-            [[pred_scaled]]
+            np.array([[pred_scaled]], dtype="float64")
         )[0][0]
+
         predictions.append(pred_unscaled)
 
-        # ----------------------------------------------------
-        # Build new row (all-zero scaled except for Close)
-        # ----------------------------------------------------
-        new_row_scaled = np.zeros((1, len(feature_cols)))
+        # Build new scaled row
+        new_row_scaled = np.zeros((1, len(feature_cols)), dtype="float64")
         new_row_scaled[0, close_idx] = pred_scaled
 
-        # Slide the window
+        # Slide window
         current_window = np.concatenate(
             [
-                current_window[:, 1:, :],                # drop first row
-                new_row_scaled.reshape(1, 1, len(feature_cols))  # append new row
+                current_window[:, 1:, :],
+                new_row_scaled.reshape(1, 1, len(feature_cols))
             ],
             axis=1
         )
 
-    # Create future dates
     future_dates = pd.date_range(
         df.index[-1] + pd.Timedelta(days=1),
         periods=n_days
