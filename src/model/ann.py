@@ -29,7 +29,7 @@ def build_regression_ann(input_shape, units=[64, 32], lr=1e-3):
 # ==========================================================
 # 2. WINDOWED DATASET CREATOR
 # ==========================================================
-def create_windowed_dataset(df, feature_cols, target_col="Close", window_size=20):
+def create_windowed_dataset(df, feature_cols, target_col="Target_Close", window_size=20):
     data = df[feature_cols + [target_col]].values
     X, y = [], []
 
@@ -61,7 +61,9 @@ class ScalerWrapper:
         X_scaled = self.feature_scaler.transform(X_flat).reshape(n, w, f)
         if y is None:
             return X_scaled
-        y_scaled = self.target_scaler.transform(y.reshape(-1, 1)).reshape(-1)
+        y_scaled = self.target_scaler.fit_transform(
+            y.reshape(-1, 1).astype("float64")
+        ).reshape(-1)
         return X_scaled, y_scaled
 
     def inverse_transform_target(self, y_scaled):
