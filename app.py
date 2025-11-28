@@ -85,8 +85,9 @@ if page == "Home":
         if selected_stock:
             df = load_and_clean_stock(selected_stock)
             df = add_essential_columns(df)
+            st.session_state["cleaned_df"] = df
             st.success("Data Loaded Successfully")
-            st.dataframe(df)
+            st.dataframe(st.session_state["cleaned_df"])
 
 
 # =========================================================
