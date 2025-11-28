@@ -135,19 +135,17 @@ def plot_macd(df):
 # 7. Price vs Target Comparison (ANN output)
 # ------------------------------------------------------
 def plot_pred_vs_actual(df_plot):
-    import plotly.graph_objects as go
-
     fig = go.Figure()
 
-    # ------------------------------------------------
-    # SAFE COLUMN CHECK (does not access the column)
-    # ------------------------------------------------
-    has_y_true = "y_true" in df_plot.columns
+    # -----------------------------
+    # SAFELY CHECK FOR y_true
+    # -----------------------------
+    safe_has_y_true = "y_true" in df_plot.columns.tolist()
 
-    # ------------------------------------------------
-    # 1. Add Actual Line ONLY if column exists
-    # ------------------------------------------------
-    if has_y_true:
+    # -----------------------------
+    # 1. Actual (only if exists)
+    # -----------------------------
+    if safe_has_y_true:
         try:
             fig.add_trace(go.Scatter(
                 x=df_plot["Date"],
@@ -157,11 +155,11 @@ def plot_pred_vs_actual(df_plot):
                 line=dict(color="blue")
             ))
         except Exception:
-            pass  # Even if plotting fails, don't crash
+            pass  # Never crash
 
-    # ------------------------------------------------
-    # 2. Always Add Predicted Line
-    # ------------------------------------------------
+    # -----------------------------
+    # 2. Predicted
+    # -----------------------------
     fig.add_trace(go.Scatter(
         x=df_plot["Date"],
         y=df_plot["y_pred"],
@@ -171,9 +169,9 @@ def plot_pred_vs_actual(df_plot):
     ))
 
     fig.update_layout(
-        title="Future Stock Price Predictions",
+        title="Future Predictions",
         xaxis_title="Date",
-        yaxis_title="Price"
+        yaxis_title="Predicted Price"
     )
 
     return fig
