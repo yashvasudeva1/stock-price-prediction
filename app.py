@@ -77,16 +77,17 @@ page = st.sidebar.radio(
 # HOME PAGE
 # =========================================================
 if page == "Home":
-    st.title("📊 Stock Analyzer & ANN Prediction")
+    st.title("Stock Analyzer & ANN Prediction")
 
     st.write("Select a stock from the sidebar and load the data.")
 
     if st.button("Load & Clean Data"):
         if selected_stock:
-            df = load_and_clean_stock(selected_stock, data_folder)
+            df = load_and_clean_stock(selected_stock)
             df = add_essential_columns(df)
             st.session_state["cleaned_df"] = df
             st.success("Data Loaded Successfully")
+            st.dataframe(df)
 
 
 # =========================================================
