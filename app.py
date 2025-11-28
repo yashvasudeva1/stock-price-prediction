@@ -120,8 +120,32 @@ elif page == "EDA":
         st.stop()
 
     st.subheader("1. Dataset Summary")
-    st.json(dataset_summary(df))
-
+    summary = dataset_summary(df)
+    
+    st.subheader("📊 Dataset Summary")
+    
+    # ─────────────────────────────────
+    # 1. SHOW BASIC METRICS
+    # ─────────────────────────────────
+    col1, col2, col3 = st.columns(3)
+    
+    col1.metric("Total Rows", summary["total_rows"])
+    col2.metric("Start Date", summary["start_date"])
+    col3.metric("End Date", summary["end_date"])
+    
+    # ─────────────────────────────────
+    # 2. SHOW COLUMN LIST NEATLY
+    # ─────────────────────────────────
+    with st.expander("🧱 Columns in Dataset"):
+        st.write(", ".join(summary["columns"]))
+    
+    # ─────────────────────────────────
+    # 3. SHOW MISSING VALUES TABLE
+    # ─────────────────────────────────
+    st.subheader("📌 Missing Values")
+    missing_df = pd.DataFrame.from_dict(summary["missing_values"], orient="index", columns=["Missing"])
+    st.table(missing_df)
+    
     st.subheader("2. Summary Stats")
     st.dataframe(summary_stats(df))
 
