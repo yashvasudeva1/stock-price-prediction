@@ -15,11 +15,11 @@ def load_and_clean_stock(stock_name, data_folder="data/stock-data"):
     df.rename(columns={"index": "Date"}, inplace=True)
 
     # Convert Date safely
-    df["Date"] = pd.to_datetime(
-        df["Date"], 
-        format="%d-%m-%Y", 
-        errors="coerce"
-    )
+    # df["Date"] = pd.to_datetime(
+    #     df["Date"], 
+    #     format="%d-%m-%Y", 
+    #     errors="coerce"
+    # )
 
     df = df.set_index("Date")
 
