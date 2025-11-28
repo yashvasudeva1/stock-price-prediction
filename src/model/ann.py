@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-# models/ann.py
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
@@ -106,4 +104,3 @@ class ScalerWrapper:
 
     def inverse_transform_target(self, y_scaled):
         return self.target_scaler.inverse_transform(y_scaled.reshape(-1,1)).reshape(-1)
->>>>>>> f79e85d (Added all the files)
