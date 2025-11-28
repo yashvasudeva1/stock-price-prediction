@@ -27,7 +27,7 @@ from src.eda.visualisations.create_visualisations import (
     plot_macd,
     plot_pred_vs_actual
 )
-from src.model.ann_multistep import (
+from src.model.ann import (
     MultiScaler,
     preprocess_data,
     build_multistep_ann,
