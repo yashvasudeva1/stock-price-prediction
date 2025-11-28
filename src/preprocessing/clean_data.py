@@ -21,12 +21,6 @@ def load_and_clean_stock(stock_name, data_folder="data/stock-data"):
         errors="coerce"
     )
 
-    # Drop invalid dates
-    df = df.dropna(subset=["Date"])
-
-    # Sort by date
-    df = df.sort_values("Date")
-
     df = df.set_index("Date")
 
     return df
