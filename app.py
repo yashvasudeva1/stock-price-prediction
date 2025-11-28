@@ -87,7 +87,7 @@ if page == "Home":
             df = add_essential_columns(df)
             st.session_state["cleaned_df"] = df
             st.success("Data Loaded Successfully")
-            st.dataframe(cleaned_df)
+            st.dataframe(st.session_state["cleaned_df"])
 
 
 # =========================================================
