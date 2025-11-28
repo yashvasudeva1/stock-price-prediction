@@ -214,7 +214,7 @@ elif page == "Train ANN":
     if st.button("Train Multi-Step ANN"):
         with st.spinner("Training ANN..."):
 
-            from src.model.ann_multistep import (
+            from src.model.ann import (
                 MultiScaler,
                 preprocess_data,
                 build_multistep_ann,
