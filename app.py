@@ -119,50 +119,72 @@ elif page == "EDA":
         st.warning("⚠ Please load data first.")
         st.stop()
 
-    st.subheader("1. Dataset Summary")
+    # ===========================================
+    # 1. DATASET SUMMARY
+    # ===========================================
+    st.subheader("📊 1. Dataset Summary")
+
     summary = dataset_summary(df)
-    
-    st.subheader("📊 Dataset Summary")
-    
-    # ─────────────────────────────────
-    # 1. SHOW BASIC METRICS
-    # ─────────────────────────────────
+
+    # Top metrics
     col1, col2, col3 = st.columns(3)
-    
     col1.metric("Total Rows", summary["total_rows"])
     col2.metric("Start Date", summary["start_date"])
     col3.metric("End Date", summary["end_date"])
-    
-    # ─────────────────────────────────
-    # 2. SHOW COLUMN LIST NEATLY
-    # ─────────────────────────────────
+
+    # Columns list
     with st.expander("🧱 Columns in Dataset"):
         st.write(", ".join(summary["columns"]))
-    
-    # ─────────────────────────────────
-    # 3. SHOW MISSING VALUES TABLE
-    # ─────────────────────────────────
+
+    # Missing values
     st.subheader("📌 Missing Values")
-    missing_df = pd.DataFrame.from_dict(summary["missing_values"], orient="index", columns=["Missing"])
+    missing_df = pd.DataFrame.from_dict(
+        summary["missing_values"], 
+        orient="index", 
+        columns=["Missing"]
+    )
     st.table(missing_df)
-    
-    st.subheader("2. Summary Stats")
+
+    # ===========================================
+    # 2. SUMMARY STATS
+    # ===========================================
+    st.subheader("📈 2. Summary Statistics")
     st.dataframe(summary_stats(df))
 
-    st.subheader("3. Trading Day Info")
-    st.json(trading_day_info(df))
+    # ===========================================
+    # 3. TRADING DAY INFO
+    # ===========================================
+    st.subheader("📅 3. Trading Day Info")
+    st.json(trading_day_info(df), expanded=True)
 
-    st.subheader("4. Daily Return Stats")
-    st.json(daily_return_stats(df))
+    # ===========================================
+    # 4. DAILY RETURN STATS
+    # ===========================================
+    st.subheader("📉 4. Daily Return Stats")
+    st.json(daily_return_stats(df), expanded=True)
 
-    st.subheader("5. Outliers (Close)")
-    st.dataframe(detect_outliers(df))
+    # ===========================================
+    # 5. OUTLIERS
+    # ===========================================
+    st.subheader("⚠️ 5. Outliers in Close Price")
+    outliers = detect_outliers(df)
+    if len(outliers) == 0:
+        st.info("No outliers detected.")
+    else:
+        st.dataframe(outliers)
 
-    st.subheader("6. Correlation Matrix")
+    # ===========================================
+    # 6. CORRELATION MATRIX
+    # ===========================================
+    st.subheader("🔗 6. Correlation Matrix")
     st.dataframe(correlation_matrix(df))
 
-    st.subheader("7. Trend Streaks")
-    st.json(trend_streaks(df))
+    # ===========================================
+    # 7. TREND STREAKS
+    # ===========================================
+    st.subheader("📊 7. Trend Streaks")
+    st.json(trend_streaks(df), expanded=True)
+
 
 # =========================================================
 # VISUALISATIONS
