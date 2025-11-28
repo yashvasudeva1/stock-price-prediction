@@ -7,13 +7,17 @@ import numpy as np
 # 1. Basic Dataset Overview
 # ----------------------------------------------------
 def dataset_summary(df):
+    # Ensure index is datetime
+    index = pd.to_datetime(df.index, errors="coerce")
+
     return {
         "total_rows": len(df),
-        "start_date": df.index.min().strftime("%Y-%m-%d"),
-        "end_date": df.index.max().strftime("%Y-%m-%d"),
+        "start_date": index.min().strftime("%Y-%m-%d") if not pd.isna(index.min()) else "N/A",
+        "end_date": index.max().strftime("%Y-%m-%d") if not pd.isna(index.max()) else "N/A",
         "columns": list(df.columns),
         "missing_values": df.isna().sum().to_dict(),
     }
+
 
 
 
