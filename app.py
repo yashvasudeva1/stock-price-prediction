@@ -283,7 +283,7 @@ elif page == "Predictions":
 
     st.write(f"Model will predict **{forecast_days} future days** at once.")
 
-    from src.model.ann_multistep import predict_future
+    from src.model.ann import predict_future
 
     if st.button("Predict Future Prices"):
         pred_df = predict_future(
