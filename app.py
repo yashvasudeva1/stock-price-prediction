@@ -265,4 +265,34 @@ elif page == "Train ANN":
         st.success("Training Complete!")
 
         st.session_state["model"] = model
+
+elif page == "Predictions":
+    st.title("📈 Predict Next Prices")
+
+    df = st.session_state["cleaned_df"]
+    model = st.session_state["model"]
+    scaler = st.session_state["scaler"]
+
+    if df is None or model is None or scaler is None:
+        st.warning("⚠ Train the model before predicting!")
+        st.stop()
+
+    n_days = st.slider("How many future days to predict?", 1, 30, 7)
+
+    if st.button("Predict"):
+        pred_df = predict_next_n_days(model, scaler, df, window_size=30, n_days=n_days)
+
+        st.session_state["pred_df"] = pred_df
+
+        st.success("Prediction complete!")
+
+        st.dataframe(pred_df)
+
+        # Optional: Plot
+        st.plotly_chart(
+            plot_pred_vs_actual(
+                pred_df.rename(columns={"Predicted_Close": "y_pred"})
+            ),
+            use_container_width=True,
+        )
     
