@@ -240,13 +240,12 @@ elif page == "Train ANN":
 # =========================================================
 elif page == "Predictions":
     st.title("📈 Predict Future Stock Prices")
-
     df = st.session_state["cleaned_df"]
     model = st.session_state.get("model")
     scaler = st.session_state.get("scaler")
     feature_cols = st.session_state.get("feature_cols")
     window_size = st.session_state.get("window_size")
-
+    
     # FIXED CHECK
     if (
         df is None 
@@ -257,36 +256,50 @@ elif page == "Predictions":
     ):
         st.warning("⚠ Train the ANN model first.")
         st.stop()
-
+    
+    # CRITICAL FIX: Ensure 'Close' is in feature_cols
+    if 'Close' not in feature_cols:
+        st.error("❌ 'Close' column is required for predictions but not found in feature_cols.")
+        st.info("💡 Please retrain your model with 'Close' included in the features.")
+        st.stop()
+    
     n_days = st.slider("How many future days to predict?", 1, 30, 7)
-
+    
     if st.button("Predict"):
-        pred_df = predict_next_n_days(
-            model=model,
-            scaler=scaler,
-            df=df,
-            feature_cols=feature_cols,
-            window_size=window_size,
-            n_days=n_days
-        )
-    
-        # FIX: remove duplicated Date column
-        pred_df = pred_df.loc[:, ~pred_df.columns.duplicated()]
-    
-        st.session_state["pred_df"] = pred_df
-    
-        st.success("Prediction complete!")
-        st.dataframe(pred_df)
-    
-        st.subheader("Prediction Plot")
-    
-        # Build clean df for visualisation
-        df_plot = pd.DataFrame({
-            "Date": pred_df["Date"],
-            "y_true": pred_df.get("y_true"),
-            "y_pred": pred_df.get("y_pred")
-        })
-    
-        fig_pred = plot_pred_vs_actual(df_plot)
-        st.plotly_chart(fig_pred, use_container_width=True)
+        try:
+            pred_df = predict_next_n_days(
+                model=model,
+                scaler=scaler,
+                df=df,
+                feature_cols=feature_cols,
+                window_size=window_size,
+                n_days=n_days
+            )
+        
+            # FIX: remove duplicated Date column
+            pred_df = pred_df.loc[:, ~pred_df.columns.duplicated()]
+        
+            st.session_state["pred_df"] = pred_df
+        
+            st.success("✅ Prediction complete!")
+            st.dataframe(pred_df)
+        
+            st.subheader("Prediction Plot")
+        
+            # Build clean df for visualisation
+            df_plot = pd.DataFrame({
+                "Date": pred_df["Date"].values,
+                "y_true": pred_df["y_true"].values if "y_true" in pred_df.columns else None,
+                "y_pred": pred_df["y_pred"].values if "y_pred" in pred_df.columns else None
+            })
+            
+            # Remove rows where both y_true and y_pred are None
+            df_plot = df_plot.dropna(subset=["y_pred"])
+        
+            fig_pred = plot_pred_vs_actual(df_plot)
+            st.plotly_chart(fig_pred, use_container_width=True)
+            
+        except Exception as e:
+            st.error(f"❌ Prediction failed: {str(e)}")
+            st.info("💡 Make sure your model was trained correctly with all required features.")
 
