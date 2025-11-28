@@ -227,7 +227,6 @@ elif page == "Train ANN":
     st.title("🤖 Train ANN Model")
 
     df = st.session_state["cleaned_df"]
-
     if df is None:
         st.warning("⚠ Load and clean the data first.")
         st.stop()
@@ -252,7 +251,12 @@ elif page == "Train ANN":
         with st.spinner("Training ANN..."):
 
             # Create dataset
-            X, y = create_windowed_dataset(df, feature_cols, target_col="Target_Close", window_size=window_size)
+            X, y = create_windowed_dataset(
+                df,
+                feature_cols=feature_cols,
+                target_col="Target_Close",
+                window_size=window_size
+            )
 
             # Scaling
             scaler = ScalerWrapper()
@@ -271,7 +275,7 @@ elif page == "Train ANN":
 
             st.success("Model trained successfully!")
 
-            # Save to session state
+            # Save for later use
             st.session_state["model"] = model
             st.session_state["scaler"] = scaler
             st.session_state["history"] = history
@@ -280,10 +284,10 @@ elif page == "Train ANN":
 
         # Show training curves
         st.subheader("Training Performance")
-        st.line_chart({"loss": history.history["loss"], "val_loss": history.history["val_loss"]})
-
-
-
+        st.line_chart({
+            "loss": history.history["loss"],
+            "val_loss": history.history["val_loss"]
+        })
 # =========================================================
 # PREDICTION PAGE
 # =========================================================
@@ -293,8 +297,10 @@ elif page == "Predictions":
     df = st.session_state["cleaned_df"]
     model = st.session_state.get("model", None)
     scaler = st.session_state.get("scaler", None)
+    feature_cols = st.session_state.get("feature_cols", None)
+    window_size = st.session_state.get("window_size", None)
 
-    if df is None or model is None or scaler is None:
+    if df is None or model is None or scaler is None or feature_cols is None:
         st.warning("⚠ Train the ANN model first.")
         st.stop()
 
@@ -303,13 +309,12 @@ elif page == "Predictions":
     from src.model.ann import predict_next_n_days
 
     if st.button("Predict"):
-
         pred_df = predict_next_n_days(
             model=model,
             scaler=scaler,
             df=df,
             feature_cols=feature_cols,
-            window_size=st.session_state["window_size"],
+            window_size=window_size,
             n_days=n_days
         )
 
@@ -320,7 +325,9 @@ elif page == "Predictions":
 
         # Plot Prediction Chart
         st.subheader("Prediction Plot")
+
         fig_pred = plot_pred_vs_actual(
             pred_df.rename(columns={"Predicted_Close": "y_pred"})
         )
         st.plotly_chart(fig_pred, use_container_width=True)
+
