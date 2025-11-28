@@ -129,8 +129,10 @@ elif page == "EDA":
     # Top metrics
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Rows", summary["total_rows"])
-    col2.write(f"**Start Date:**  {summary['start_date']}")
-    col3.write(f"**End Date:**  {summary['end_date']}")
+    
+    col2.write(f"**Start Date:** {summary['start_date']}")
+    col3.write(f"**End Date:** {summary['end_date']}")
+
 
 
 
