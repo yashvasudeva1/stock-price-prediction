@@ -57,7 +57,7 @@ if "pred_df" not in st.session_state:
 # -----------------------------------
 st.sidebar.header("⚙ Settings")
 
-data_folder = "data"
+data_folder = "data/stock-data"
 
 if not os.path.exists(data_folder):
     st.sidebar.error("❌ 'data/' folder not found.")
