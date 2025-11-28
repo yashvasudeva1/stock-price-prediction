@@ -7,7 +7,12 @@ import plotly.express as px
 # 1. Close Price Chart
 # -----------------------------
 def plot_close_price(df):
-    fig = px.line(df, x="Date", y="Close", title="Close Price Over Time")
+    fig = px.line(
+        df.reset_index(), 
+        x=df.reset_index().columns[0],  # first column = Date index
+        y="Close",
+        title="Close Price Over Time"
+    )
     fig.update_layout(xaxis_title="Date", yaxis_title="Close Price")
     return fig
 
