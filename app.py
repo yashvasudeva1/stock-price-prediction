@@ -5,9 +5,9 @@ import pandas as pd
 # ---------------------------
 # IMPORTING YOUR MODULES
 # ---------------------------
-from src/preprocessing/clean_data import load_and_clean_stock
-from src/eda/analytics/create_essential_columns.py import add_essential_columns
-from src/eda/eda import (
+from src.preprocessing.clean_data import load_and_clean_stock
+from src.eda.analytics.create_essential_columns import add_essential_columns
+from src.eda.analytics.eda import (
     dataset_summary,
     summary_stats,
     trading_day_info,
