@@ -179,10 +179,10 @@ elif page == "Visualisations":
         st.plotly_chart(plot_macd(df), use_container_width=True)
 
 # =========================================================
-# TRAIN ANN PAGE - FIXED VERSION
+# TRAIN ANN PAGE (MULTI-STEP)
 # =========================================================
 elif page == "Train ANN":
-    st.title("🤖 Train ANN Model")
+    st.title("🤖 Train Multi-Step ANN Model")
 
     df = st.session_state["cleaned_df"]
     if df is None:
@@ -191,174 +191,113 @@ elif page == "Train ANN":
 
     st.subheader("Select Feature Columns")
 
-    # SIMPLIFIED: Use only Close for better predictions
-    default_features = ["Close"]
-    
-    # Or if you want more features:
-    # default_features = ["Close", "SMA_5", "SMA_10", "SMA_20", "RSI_14", "MACD", "MACD_SIGNAL"]
+    default_features = ["Close", "SMA_5", "SMA_10", "SMA_20", "RSI_14", "MACD", "MACD_SIGNAL"]
 
     feature_cols = st.multiselect(
-        "Choose features:",
+        "Choose features to train on:",
         options=df.columns.tolist(),
-        default=[c for c in default_features if c in df.columns]
+        default=[col for col in default_features if col in df.columns]
     )
 
     if len(feature_cols) == 0:
         st.warning("⚠ Select at least one feature.")
         st.stop()
-    
-    # CRITICAL: Ensure Close is always included
-    if "Close" not in feature_cols:
-        st.error("❌ 'Close' must be included in features for predictions to work.")
-        st.stop()
 
-    window_size = st.slider("Window Size (days)", 5, 60, 30)
+    target_col = "Close"
 
-    if st.button("Train Model"):
+    window_size = st.slider("Window Size (days)", 20, 100, 60)
+    forecast_days = st.slider("Forecast horizon (future days)", 1, 30, 7)
+
+    if st.button("Train Multi-Step ANN"):
         with st.spinner("Training ANN..."):
-            
-            # ============================================
-            # CRITICAL FIX: CREATE TARGET_CLOSE COLUMN
-            # ============================================
-            df_train = df.copy()
-            
-            # Target is the next day's Close price
-            df_train["Target_Close"] = df_train["Close"].shift(-1)
-            
-            # Drop the last row (it has no target)
-            df_train = df_train.dropna(subset=["Target_Close"])
-            
-            st.info(f"✅ Created Target_Close column (next day's Close price)")
-            st.info(f"📊 Training samples: {len(df_train) - window_size}")
-            
-            # Create windowed dataset
-            X, y = create_windowed_dataset(
-                df_train, feature_cols, target_col="Target_Close", window_size=window_size
-            )
-            
-            # Verify data shape
-            st.write(f"X shape: {X.shape}, y shape: {y.shape}")
-            st.write(f"Target (y) - Min: {y.min():.2f}, Max: {y.max():.2f}, Mean: {y.mean():.2f}")
-            
-            # Check if y is constant (this would cause the issue)
-            if y.std() < 0.01:
-                st.error("❌ Target values are nearly constant! Check your data.")
-                st.stop()
 
-            # Scale data
-            scaler = ScalerWrapper()
-            Xs, ys = scaler.fit_transform(X, y)
-
-            # Build model
-            model = build_regression_ann(input_shape=(window_size, len(feature_cols)))
-
-            # Train model
-            history = model.fit(
-                Xs, ys, 
-                validation_split=0.2, 
-                epochs=50,  # Increased from 20
-                batch_size=32, 
-                verbose=0
+            from src.model.ann_multistep import (
+                MultiScaler,
+                preprocess_data,
+                build_multistep_ann,
+                train_model
             )
 
-            st.success("✅ Model trained successfully!")
+            # Create Scaler
+            scaler = MultiScaler()
 
-            # Save to session state
+            # Create dataset
+            X, y = preprocess_data(
+                df=df,
+                feature_cols=feature_cols,
+                target_col=target_col,
+                window_size=window_size,
+                forecast_days=forecast_days,
+                scaler=scaler
+            )
+
+            # Build ANN
+            input_size = X.shape[1]
+            model = build_multistep_ann(
+                input_size=input_size,
+                output_steps=forecast_days
+            )
+
+            # Train
+            history = train_model(model, X, y)
+
+            # Save for Prediction page
             st.session_state["model"] = model
             st.session_state["scaler"] = scaler
-            st.session_state["history"] = history
             st.session_state["feature_cols"] = feature_cols
             st.session_state["window_size"] = window_size
+            st.session_state["forecast_days"] = forecast_days
 
-        st.subheader("📈 Training Performance")
-        
-        # Plot training history
-        loss_df = pd.DataFrame({
-            "Training Loss": history.history["loss"],
-            "Validation Loss": history.history["val_loss"]
+            st.success("🎉 Model trained successfully!")
+
+        # Training Curves
+        st.subheader("📉 Training Performance")
+        st.line_chart({
+            "loss": history.history["loss"],
+            "val_loss": history.history["val_loss"]
         })
-        st.line_chart(loss_df)
-        
-        # Show final metrics
-        final_train_loss = history.history["loss"][-1]
-        final_val_loss = history.history["val_loss"][-1]
-        
-        col1, col2 = st.columns(2)
-        col1.metric("Final Training Loss", f"{final_train_loss:.4f}")
-        col2.metric("Final Validation Loss", f"{final_val_loss:.4f}")
-        
-        # Warning if model didn't learn
-        if final_val_loss > y.std() ** 2:
-            st.warning("⚠️ Model may not have learned well. Try:")
-            st.write("- Increasing epochs")
-            st.write("- Adjusting window size")
-            st.write("- Using different features")
+
 
 # =========================================================
-# PREDICTION PAGE
+# PREDICTION PAGE (MULTI-STEP)
 # =========================================================
 elif page == "Predictions":
     st.title("📈 Predict Future Stock Prices")
+
     df = st.session_state["cleaned_df"]
     model = st.session_state.get("model")
     scaler = st.session_state.get("scaler")
     feature_cols = st.session_state.get("feature_cols")
     window_size = st.session_state.get("window_size")
-    
-    # FIXED CHECK
-    if (
-        df is None 
-        or model is None 
-        or scaler is None 
-        or feature_cols is None 
-        or window_size is None
-    ):
+    forecast_days = st.session_state.get("forecast_days")
+
+    if None in (df, model, scaler, feature_cols, window_size, forecast_days):
         st.warning("⚠ Train the ANN model first.")
         st.stop()
-    
-    # CRITICAL FIX: Ensure 'Close' is in feature_cols
-    if 'Close' not in feature_cols:
-        st.error("❌ 'Close' column is required for predictions but not found in feature_cols.")
-        st.info("💡 Please retrain your model with 'Close' included in the features.")
-        st.stop()
-    
-    n_days = st.slider("How many future days to predict?", 1, 30, 7)
-    
-    if st.button("Predict"):
-        try:
-            pred_df = predict_next_n_days(
-                model=model,
-                scaler=scaler,
-                df=df,
-                feature_cols=feature_cols,
-                window_size=window_size,
-                n_days=n_days
-            )
-        
-            # FIX: remove duplicated Date column
-            pred_df = pred_df.loc[:, ~pred_df.columns.duplicated()]
-        
-            st.session_state["pred_df"] = pred_df
-        
-            st.success("✅ Prediction complete!")
-            st.dataframe(pred_df)
-        
-            st.subheader("Prediction Plot")
-        
-            # Build clean df for visualisation
-            df_plot = pd.DataFrame({
-                "Date": pred_df["Date"].values,
-                "y_true": pred_df["y_true"].values if "y_true" in pred_df.columns else None,
-                "y_pred": pred_df["y_pred"].values if "y_pred" in pred_df.columns else None
-            })
-            
-            # Remove rows where both y_true and y_pred are None
-            df_plot = df_plot.dropna(subset=["y_pred"])
-        
-            fig_pred = plot_pred_vs_actual(df_plot)
-            st.plotly_chart(fig_pred, use_container_width=True)
-            
-        except Exception as e:
-            st.error(f"❌ Prediction failed: {str(e)}")
-            st.info("💡 Make sure your model was trained correctly with all required features.")
 
+    st.write(f"Model will predict **{forecast_days} future days** at once.")
+
+    from src.model.ann_multistep import predict_future
+
+    if st.button("Predict Future Prices"):
+        pred_df = predict_future(
+            model=model,
+            scaler=scaler,
+            df=df,
+            feature_cols=feature_cols,
+            window_size=window_size,
+            forecast_days=forecast_days
+        )
+
+        st.session_state["pred_df"] = pred_df
+
+        st.success("Prediction complete!")
+        st.dataframe(pred_df)
+
+        # Visualise
+        st.subheader("Prediction Plot")
+        fig_pred = plot_pred_vs_actual(
+            pred_df.rename(columns={"y_pred": "y_pred"})
+        )
+
+        st.plotly_chart(fig_pred, use_container_width=True)
