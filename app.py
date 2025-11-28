@@ -308,6 +308,7 @@ elif page == "Predictions":
             model=model,
             scaler=scaler,
             df=df,
+            feature_cols=feature_cols,
             window_size=st.session_state["window_size"],
             n_days=n_days
         )
