@@ -265,4 +265,4 @@ elif page == "Train ANN":
         st.success("Training Complete!")
 
         st.session_state["model"] = model
-        s
+    
