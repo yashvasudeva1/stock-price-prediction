@@ -82,11 +82,12 @@ if page == "Home":
     st.write("Select a stock from the sidebar and load the data.")
 
     if st.button("Load & Clean Data"):
-        df = load_and_clean_stock(selected_stock, data_folder)
-        df = add_essential_columns(df)
+        if selected_stock:
+            df = load_and_clean_stock(selected_stock, data_folder)
+            df = add_essential_columns(df)
+            st.session_state["cleaned_df"] = df
+            st.success("Data Loaded Successfully")
 
-        st.session_state["cleaned_df"] = df
-        st.success(f"Loaded and cleaned: {selected_stock}")
 
 # =========================================================
 # DATA PREVIEW
