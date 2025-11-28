@@ -269,12 +269,24 @@ elif page == "Predictions":
             window_size=window_size,
             n_days=n_days
         )
-
+    
+        # FIX: remove duplicated Date column
+        pred_df = pred_df.loc[:, ~pred_df.columns.duplicated()]
+    
         st.session_state["pred_df"] = pred_df
-
+    
         st.success("Prediction complete!")
         st.dataframe(pred_df)
-
+    
         st.subheader("Prediction Plot")
-        fig_pred = plot_pred_vs_actual(pred_df)
+    
+        # Build clean df for visualisation
+        df_plot = pd.DataFrame({
+            "Date": pred_df["Date"],
+            "y_true": pred_df.get("y_true"),
+            "y_pred": pred_df.get("y_pred")
+        })
+    
+        fig_pred = plot_pred_vs_actual(df_plot)
         st.plotly_chart(fig_pred, use_container_width=True)
+
