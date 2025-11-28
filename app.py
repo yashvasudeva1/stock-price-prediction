@@ -18,7 +18,7 @@ from src.eda.analytics.eda import (
     volume_spikes,
     trend_streaks
 )
-from src.visualisations.create_visualisations import (
+from src.eda.visualisations.create_visualisations import (
     plot_close_price,
     plot_candlestick,
     plot_volume,
