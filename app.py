@@ -165,7 +165,7 @@ elif page == "EDA":
     # 4. DAILY RETURN STATS
     # ===========================================
     st.subheader("📉 4. Daily Return Stats")
-    st.dataframe(daily_return_stats(df), expanded=True)
+    st.json(daily_return_stats(df), expanded=True)
 
     # ===========================================
     # 5. OUTLIERS
@@ -187,7 +187,7 @@ elif page == "EDA":
     # 7. TREND STREAKS
     # ===========================================
     st.subheader("📊 7. Trend Streaks")
-    st.dataframe(trend_streaks(df), expanded=True)
+    st.json(trend_streaks(df), expanded=True)
 
 
 # =========================================================
