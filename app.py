@@ -18,7 +18,7 @@ from src.eda.analytics.eda import (
     volume_spikes,
     trend_streaks
 )
-from src/visualisations/create_visualisations import (
+from src.visualisations.create_visualisations import (
     plot_close_price,
     plot_candlestick,
     plot_volume,
@@ -27,7 +27,7 @@ from src/visualisations/create_visualisations import (
     plot_macd,
     plot_pred_vs_actual
 )
-from src/model/ann import (
+from src.model.ann import (
     build_regression_ann,
     create_windowed_dataset,
     ScalerWrapper
