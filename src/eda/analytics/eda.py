@@ -8,13 +8,13 @@ import numpy as np
 # ----------------------------------------------------
 def dataset_summary(df):
     return {
-        "rows": len(df),
-        "columns": df.columns.tolist(),
+        "total_rows": len(df),
+        "start_date": df.index.min(),
+        "end_date": df.index.max(),
+        "columns": list(df.columns),
         "missing_values": df.isna().sum().to_dict(),
-        "duplicate_rows": df.duplicated().sum(),
-        "start_date": df["Date"].min(),
-        "end_date": df["Date"].max(),
     }
+
 
 # ----------------------------------------------------
 # 2. Summary statistics (describe)
