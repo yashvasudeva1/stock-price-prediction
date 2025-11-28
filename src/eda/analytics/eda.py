@@ -9,11 +9,12 @@ import numpy as np
 def dataset_summary(df):
     return {
         "total_rows": len(df),
-        "start_date": df.index.min(),
-        "end_date": df.index.max(),
+        "start_date": df.index.min().strftime("%Y-%m-%d"),
+        "end_date": df.index.max().strftime("%Y-%m-%d"),
         "columns": list(df.columns),
         "missing_values": df.isna().sum().to_dict(),
     }
+
 
 
 # ----------------------------------------------------
@@ -26,15 +27,23 @@ def summary_stats(df):
 # 3. Trading day analysis
 # ----------------------------------------------------
 def trading_day_info(df):
-    df_sorted = df.sort_values("Date").reset_index(drop=True)
-    df_sorted["Day_Diff"] = df_sorted["Date"].diff().dt.days
+    # Ensure index is datetime
+    df = df.copy()
+    df.index = pd.to_datetime(df.index)
+
+    # Sort by index (date)
+    df_sorted = df.sort_index()
+
+    # Compute day differences
+    day_diff = df_sorted.index.to_series().diff().dt.days
 
     return {
         "total_trading_days": len(df_sorted),
-        "average_gap_days": df_sorted["Day_Diff"].mean(),
-        "max_gap_days": df_sorted["Day_Diff"].max(),
-        "missing_days_flag": df_sorted["Day_Diff"].max() > 3
+        "average_gap_days": day_diff.mean(),
+        "max_gap_days": day_diff.max(),
+        "missing_days_flag": day_diff.max() > 3
     }
+
 
 # ----------------------------------------------------
 # 4. Daily returns analysis
