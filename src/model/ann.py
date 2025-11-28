@@ -79,16 +79,18 @@ def predict_next_n_days(model, scaler, df, feature_cols, window_size=30, n_days=
 
     df = df.copy()
 
-    features = df[feature_cols].values
+    # Scale features
+    features = df[feature_cols].astype("float64").values
     scaled_features = scaler.feature_scaler.transform(features)
 
+    # Last window
     current_window = scaled_features[-window_size:].reshape(
         1, window_size, len(feature_cols)
     )
 
     predictions = []
 
-    # Get index of "Close"
+    # Index of Close in features
     try:
         close_idx = feature_cols.index("Close")
     except ValueError:
@@ -96,32 +98,27 @@ def predict_next_n_days(model, scaler, df, feature_cols, window_size=30, n_days=
 
     for _ in range(n_days):
 
-        # Scaled prediction
+        # Predict next step (scaled)
         pred_scaled = model.predict(current_window, verbose=0)[0][0]
 
-        # --------------------------------------------
-        # SAFETY FIX → replace NaN or invalid values
-        # --------------------------------------------
+        # ---- SAFETY CHECK ----
         if pred_scaled is None or np.isnan(pred_scaled) or np.isinf(pred_scaled):
             pred_scaled = 0.0
 
-        # Convert to real scale
-        pred_unscaled = scaler.target_scaler.inverse_transform(
-            np.array([[pred_scaled]], dtype="float64")
-        )[0][0]
+        # Convert to correct shape for inverse_transform
+        pred_scaled_arr = np.array(pred_scaled, dtype="float64").reshape(-1, 1)
+
+        # ---- FIX: Proper inverse_transform ---
+        pred_unscaled = scaler.target_scaler.inverse_transform(pred_scaled_arr)[0][0]
 
         predictions.append(pred_unscaled)
 
-        # Build new scaled row
-        new_row_scaled = np.zeros((1, len(feature_cols)), dtype="float64")
+        # Build next window
+        new_row_scaled = current_window[:, -1, :].copy().reshape(1, -1)
         new_row_scaled[0, close_idx] = pred_scaled
 
-        # Slide window
         current_window = np.concatenate(
-            [
-                current_window[:, 1:, :],
-                new_row_scaled.reshape(1, 1, len(feature_cols))
-            ],
+            [current_window[:, 1:, :], new_row_scaled.reshape(1, 1, len(feature_cols))],
             axis=1
         )
 
@@ -135,3 +132,4 @@ def predict_next_n_days(model, scaler, df, feature_cols, window_size=30, n_days=
         "y_true": [None] * n_days,
         "y_pred": predictions
     })
+
