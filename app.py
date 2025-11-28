@@ -255,10 +255,11 @@ elif page == "Train ANN":
 
         # Training Curves
         st.subheader("📉 Training Performance")
-        st.line_chart({
-            "loss": history.history["accuracy"],
-            "val_loss": history.history["val_accuracy"]
+       st.line_chart({
+            "accuracy": history.history["accuracy"],
+            "val_accuracy": history.history["val_accuracy"]
         })
+
 
 
 # =========================================================
