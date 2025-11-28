@@ -7,7 +7,20 @@ import plotly.express as px
 # Helper function to ensure Date exists as a column
 # ------------------------------------------------------
 def prepare_df(df):
-    df_plot = df.reset_index().rename(columns={"index": "Date"})
+    """
+    Prepare dataframe for plotting by ensuring Date is a column.
+    Handles cases where Date is either an index or already a column.
+    """
+    df_plot = df.copy()
+    
+    # If 'Date' is in the index, reset it
+    if df_plot.index.name == 'Date':
+        df_plot = df_plot.reset_index()
+    # If index is not named but Date is not in columns, assume index is Date
+    elif 'Date' not in df_plot.columns:
+        df_plot = df_plot.reset_index()
+        df_plot = df_plot.rename(columns={'index': 'Date'})
+    
     return df_plot
 
 
