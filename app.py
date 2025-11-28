@@ -302,8 +302,6 @@ elif page == "Predictions":
 
         # Visualise
         st.subheader("Prediction Plot")
-        fig_pred = plot_pred_vs_actual(
-            pred_df.rename(columns={"y_pred": "y_pred"})
-        )
+        fig_pred = plot_pred_vs_actual()        )
 
         st.plotly_chart(fig_pred, use_container_width=True)
