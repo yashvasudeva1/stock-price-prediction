@@ -138,26 +138,6 @@ def plot_pred_vs_actual(df_plot):
     fig = go.Figure()
 
     # -----------------------------
-    # SAFELY CHECK FOR y_true
-    # -----------------------------
-    safe_has_y_true = "y_true" in df_plot.columns.tolist()
-
-    # -----------------------------
-    # 1. Actual (only if exists)
-    # -----------------------------
-    if safe_has_y_true:
-        try:
-            fig.add_trace(go.Scatter(
-                x=df_plot["Date"],
-                y=df_plot["y_true"],
-                mode="lines",
-                name="Actual",
-                line=dict(color="blue")
-            ))
-        except Exception:
-            pass  # Never crash
-
-    # -----------------------------
     # 2. Predicted
     # -----------------------------
     fig.add_trace(go.Scatter(
