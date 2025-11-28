@@ -80,25 +80,37 @@ class ScalerWrapper:
 # ----------------------------------------------------------
 # 4. FUTURE PREDICTION (N-Day Forecast)
 # ----------------------------------------------------------
-def predict_next_n_days(model, scaler, df, window_size=30, n_days=7):
+def predict_next_n_days(model, scaler, df, feature_cols, window_size=30, n_days=7):
+
     df = df.copy()
 
-    close = df["Close"].values.reshape(-1, 1)
-    scaled_close = scaler.target_scaler.transform(close)
+    # scale ALL features the same way as training
+    features = df[feature_cols].values
+    scaled_features = scaler.feature_scaler.transform(features)
 
-    last_window = scaled_close[-window_size:].reshape(1, window_size, 1)
+    # prepare last window
+    last_window = scaled_features[-window_size:].reshape(1, window_size, len(feature_cols))
 
     predictions = []
     current_window = last_window.copy()
 
     for _ in range(n_days):
+        # predict next point
         pred_scaled = model.predict(current_window, verbose=0)[0][0]
 
+        # return original scale
         pred_unscaled = scaler.target_scaler.inverse_transform([[pred_scaled]])[0][0]
         predictions.append(pred_unscaled)
 
-        new_window = np.append(current_window[:, 1:, :], [[[pred_scaled]]], axis=1)
-        current_window = new_window
+        # build new window: drop first row, append prediction
+        new_row_scaled = np.zeros((1, len(feature_cols)))
+        new_row_scaled[0, feature_cols.index("Close")] = pred_scaled  
+
+        current_window = np.concatenate(
+            [current_window[:, 1:, :],
+             new_row_scaled.reshape(1, 1, len(feature_cols))],
+            axis=1
+        )
 
     future_dates = pd.date_range(df.index[-1] + pd.Timedelta(days=1), periods=n_days)
 
@@ -107,3 +119,4 @@ def predict_next_n_days(model, scaler, df, window_size=30, n_days=7):
         "y_true": [None] * n_days,
         "y_pred": predictions
     })
+
