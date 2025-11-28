@@ -99,7 +99,9 @@ def predict_next_n_days(model, scaler, df, feature_cols, window_size=30, n_days=
         pred_scaled = model.predict(current_window, verbose=0)[0][0]
 
         # return original scale
-        pred_unscaled = scaler.target_scaler.inverse_transform([[pred_scaled]])[0][0]
+        pred_unscaled = scaler.target_scaler.inverse_transform(
+            np.array(pred_scaled).reshape(-1, 1)
+        )[0][0]
         predictions.append(pred_unscaled)
 
         # build new window: drop first row, append prediction
