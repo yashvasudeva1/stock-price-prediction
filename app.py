@@ -30,7 +30,8 @@ from src.eda.visualisations.create_visualisations import (
 from src.model.ann import (
     build_regression_ann,
     create_windowed_dataset,
-    ScalerWrapper
+    ScalerWrapper,
+    predict_next_n_days
 )
 
 # -----------------------------------
@@ -79,16 +80,14 @@ page = st.sidebar.radio(
 if page == "Home":
     st.title("Stock Analyzer & ANN Prediction")
 
-    st.write("Select a stock from the sidebar and load the data.")
-
     if st.button("Load & Clean Data"):
         if selected_stock:
             df = load_and_clean_stock(selected_stock)
             df = add_essential_columns(df)
-            st.session_state["cleaned_df"] = df
-            st.success("Data Loaded Successfully")
-            st.dataframe(st.session_state["cleaned_df"])
 
+            st.session_state["cleaned_df"] = df
+            st.success("Data Loaded Successfully!")
+            st.dataframe(df)
 
 # =========================================================
 # DATA PREVIEW
@@ -114,81 +113,41 @@ elif page == "EDA":
     st.title(f"🔍 EDA — {selected_stock}")
 
     df = st.session_state["cleaned_df"]
-
     if df is None:
         st.warning("⚠ Please load data first.")
         st.stop()
 
-    # ===========================================
-    # 1. DATASET SUMMARY
-    # ===========================================
     st.subheader("📊 1. Dataset Summary")
-
     summary = dataset_summary(df)
 
-    # # Top metrics
-    # col1, col2, col3 = st.columns(3)
-    # col1.metric("Total Rows", summary["total_rows"])
-    
-    # col2.write(f"**Start Date:** {summary['start_date']}")
-    # col3.write(f"**End Date:** {summary['end_date']}")
-
-
-
-
-    # Columns list
     with st.expander("🧱 Columns in Dataset"):
         st.write(", ".join(summary["columns"]))
 
-    # Missing values
     st.subheader("📌 Missing Values")
     missing_df = pd.DataFrame.from_dict(
-        summary["missing_values"], 
-        orient="index", 
-        columns=["Missing"]
+        summary["missing_values"], orient="index", columns=["Missing"]
     )
     st.table(missing_df)
 
-    # ===========================================
-    # 2. SUMMARY STATS
-    # ===========================================
     st.subheader("📈 2. Summary Statistics")
     st.dataframe(summary_stats(df))
 
-    # ===========================================
-    # 3. TRADING DAY INFO
-    # ===========================================
     st.subheader("📅 3. Trading Day Info")
     td_df = pd.DataFrame([trading_day_info(df)])
     st.dataframe(td_df)
-    # ===========================================
-    # 4. DAILY RETURN STATS
-    # ===========================================
+
     st.subheader("📉 4. Daily Return Stats")
     st.json(daily_return_stats(df), expanded=True)
 
-    # ===========================================
-    # 5. OUTLIERS
-    # ===========================================
     st.subheader("⚠️ 5. Outliers in Close Price")
     outliers = detect_outliers(df)
-    if len(outliers) == 0:
-        st.info("No outliers detected.")
-    else:
-        st.dataframe(outliers)
+    st.dataframe(outliers if len(outliers) else pd.DataFrame({"Message": ["No outliers detected"]}))
 
-    # ===========================================
-    # 6. CORRELATION MATRIX
-    # ===========================================
     st.subheader("🔗 6. Correlation Matrix")
     st.dataframe(correlation_matrix(df))
 
-    # ===========================================
-    # 7. TREND STREAKS
-    # ===========================================
     st.subheader("📊 7. Trend Streaks")
     st.json(trend_streaks(df), expanded=True)
-
 
 # =========================================================
 # VISUALISATIONS
@@ -197,7 +156,6 @@ elif page == "Visualisations":
     st.title(f"📈 Visualisations — {selected_stock}")
 
     df = st.session_state["cleaned_df"]
-
     if df is None:
         st.warning("⚠ Load data from Home first.")
         st.stop()
@@ -236,9 +194,9 @@ elif page == "Train ANN":
     default_features = ["Close", "SMA_5", "SMA_10", "SMA_20", "RSI_14", "MACD", "MACD_SIGNAL"]
 
     feature_cols = st.multiselect(
-        "Choose features to train on:",
+        "Choose features:",
         options=df.columns.tolist(),
-        default=[col for col in default_features if col in df.columns]
+        default=[c for c in default_features if c in df.columns]
     )
 
     if len(feature_cols) == 0:
@@ -250,44 +208,33 @@ elif page == "Train ANN":
     if st.button("Train Model"):
         with st.spinner("Training ANN..."):
 
-            # Create dataset
             X, y = create_windowed_dataset(
-                df,
-                feature_cols=feature_cols,
-                target_col="Target_Close",
-                window_size=window_size
+                df, feature_cols, target_col="Target_Close", window_size=window_size
             )
 
-            # Scaling
             scaler = ScalerWrapper()
             Xs, ys = scaler.fit_transform(X, y)
 
-            # Build model
             model = build_regression_ann(input_shape=(window_size, len(feature_cols)))
 
             history = model.fit(
-                Xs, ys,
-                validation_split=0.2,
-                epochs=20,
-                batch_size=32,
-                verbose=0
+                Xs, ys, validation_split=0.2, epochs=20, batch_size=32, verbose=0
             )
 
             st.success("Model trained successfully!")
 
-            # Save for later use
             st.session_state["model"] = model
             st.session_state["scaler"] = scaler
             st.session_state["history"] = history
             st.session_state["feature_cols"] = feature_cols
             st.session_state["window_size"] = window_size
 
-        # Show training curves
         st.subheader("Training Performance")
         st.line_chart({
             "loss": history.history["loss"],
             "val_loss": history.history["val_loss"]
         })
+
 # =========================================================
 # PREDICTION PAGE
 # =========================================================
@@ -295,18 +242,16 @@ elif page == "Predictions":
     st.title("📈 Predict Future Stock Prices")
 
     df = st.session_state["cleaned_df"]
-    model = st.session_state.get("model", None)
-    scaler = st.session_state.get("scaler", None)
-    feature_cols = st.session_state.get("feature_cols", None)
-    window_size = st.session_state.get("window_size", None)
+    model = st.session_state.get("model")
+    scaler = st.session_state.get("scaler")
+    feature_cols = st.session_state.get("feature_cols")
+    window_size = st.session_state.get("window_size")
 
-    if df is None or model is None or scaler is None or feature_cols is None:
+    if None in (df, model, scaler, feature_cols, window_size):
         st.warning("⚠ Train the ANN model first.")
         st.stop()
 
     n_days = st.slider("How many future days to predict?", 1, 30, 7)
-
-    from src.model.ann import predict_next_n_days
 
     if st.button("Predict"):
         pred_df = predict_next_n_days(
@@ -323,11 +268,6 @@ elif page == "Predictions":
         st.success("Prediction complete!")
         st.dataframe(pred_df)
 
-        # Plot Prediction Chart
         st.subheader("Prediction Plot")
-
-        fig_pred = plot_pred_vs_actual(
-            pred_df.rename(columns={"Predicted_Close": "y_pred"})
-        )
+        fig_pred = plot_pred_vs_actual(pred_df)
         st.plotly_chart(fig_pred, use_container_width=True)
-
