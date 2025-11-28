@@ -247,7 +247,14 @@ elif page == "Predictions":
     feature_cols = st.session_state.get("feature_cols")
     window_size = st.session_state.get("window_size")
 
-    if None in (df, model, scaler, feature_cols, window_size):
+    # FIXED CHECK
+    if (
+        df is None 
+        or model is None 
+        or scaler is None 
+        or feature_cols is None 
+        or window_size is None
+    ):
         st.warning("⚠ Train the ANN model first.")
         st.stop()
 
