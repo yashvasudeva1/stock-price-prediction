@@ -225,72 +225,99 @@ elif page == "Train ANN":
     st.title("🤖 Train ANN Model")
 
     df = st.session_state["cleaned_df"]
+
     if df is None:
-        st.warning("⚠ Load data first.")
+        st.warning("⚠ Load and clean the data first.")
         st.stop()
 
-    st.subheader("Training Configuration")
+    st.subheader("Select Feature Columns")
 
-    window_size = st.number_input("Window Size", min_value=5, max_value=200, value=20)
-    epochs = st.number_input("Epochs", min_value=1, max_value=200, value=30)
-    batch_size = st.number_input("Batch Size", min_value=8, max_value=512, value=32)
-    test_split = st.slider("Test Split (%)", 5, 50, 20)
+    default_features = ["Close", "SMA_5", "SMA_10", "SMA_20", "RSI_14", "MACD", "MACD_SIGNAL"]
 
-    feature_cols = [c for c in df.columns if c not in ["Date", "Target_Close"]]
+    feature_cols = st.multiselect(
+        "Choose features to train on:",
+        options=df.columns.tolist(),
+        default=[col for col in default_features if col in df.columns]
+    )
+
+    if len(feature_cols) == 0:
+        st.warning("⚠ Select at least one feature.")
+        st.stop()
+
+    window_size = st.slider("Window Size (days)", 5, 60, 30)
 
     if st.button("Train Model"):
-        X, y = create_windowed_dataset(df, feature_cols, "Target_Close", window_size)
-
-        split = int(len(X) * (1 - test_split / 100))
-        X_train, X_test = X[:split], X[split:]
-        y_train, y_test = y[:split], y[split:]
-
-        scaler = ScalerWrapper()
-        X_train_s, y_train_s = scaler.fit_transform(X_train, y_train)
-        X_test_s, y_test_s = scaler.transform(X_test, y_test)
-
-        model = build_regression_ann(X_train_s.shape[1:])
-
         with st.spinner("Training ANN..."):
+
+            # Create dataset
+            X, y = create_windowed_dataset(df, feature_cols, target_col="Target_Close", window_size=window_size)
+
+            # Scaling
+            scaler = ScalerWrapper()
+            Xs, ys = scaler.fit_transform(X, y)
+
+            # Build model
+            model = build_regression_ann(input_shape=(window_size, len(feature_cols)))
+
             history = model.fit(
-                X_train_s, y_train_s,
-                validation_data=(X_test_s, y_test_s),
-                epochs=epochs,
-                batch_size=batch_size,
+                Xs, ys,
+                validation_split=0.2,
+                epochs=20,
+                batch_size=32,
                 verbose=0
             )
 
-        st.success("Training Complete!")
+            st.success("Model trained successfully!")
 
-        st.session_state["model"] = model
+            # Save to session state
+            st.session_state["model"] = model
+            st.session_state["scaler"] = scaler
+            st.session_state["history"] = history
+            st.session_state["feature_cols"] = feature_cols
+            st.session_state["window_size"] = window_size
 
+        # Show training curves
+        st.subheader("Training Performance")
+        st.line_chart({"loss": history.history["loss"], "val_loss": history.history["val_loss"]})
+
+
+
+# =========================================================
+# PREDICTION PAGE
+# =========================================================
 elif page == "Predictions":
-    st.title("📈 Predict Next Prices")
+    st.title("📈 Predict Future Stock Prices")
 
     df = st.session_state["cleaned_df"]
-    model = st.session_state["model"]
-    scaler = st.session_state["scaler"]
+    model = st.session_state.get("model", None)
+    scaler = st.session_state.get("scaler", None)
 
     if df is None or model is None or scaler is None:
-        st.warning("⚠ Train the model before predicting!")
+        st.warning("⚠ Train the ANN model first.")
         st.stop()
 
     n_days = st.slider("How many future days to predict?", 1, 30, 7)
 
+    from src.model.ann import predict_next_n_days
+
     if st.button("Predict"):
-        pred_df = predict_next_n_days(model, scaler, df, window_size=30, n_days=n_days)
+
+        pred_df = predict_next_n_days(
+            model=model,
+            scaler=scaler,
+            df=df,
+            window_size=st.session_state["window_size"],
+            n_days=n_days
+        )
 
         st.session_state["pred_df"] = pred_df
 
         st.success("Prediction complete!")
-
         st.dataframe(pred_df)
 
-        # Optional: Plot
-        st.plotly_chart(
-            plot_pred_vs_actual(
-                pred_df.rename(columns={"Predicted_Close": "y_pred"})
-            ),
-            use_container_width=True,
+        # Plot Prediction Chart
+        st.subheader("Prediction Plot")
+        fig_pred = plot_pred_vs_actual(
+            pred_df.rename(columns={"Predicted_Close": "y_pred"})
         )
-    
+        st.plotly_chart(fig_pred, use_container_width=True)
