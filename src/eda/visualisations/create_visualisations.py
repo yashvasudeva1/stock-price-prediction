@@ -134,16 +134,34 @@ def plot_macd(df):
 # ------------------------------------------------------
 # 7. Price vs Target Comparison (ANN output)
 # ------------------------------------------------------
-def plot_pred_vs_actual(df_pred):
-    df_plot = prepare_df(df_pred)
+def plot_pred_vs_actual(df_plot):
+    import plotly.graph_objects as go
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df_plot["Date"], y=df_plot["y_true"], mode="lines", name="Actual"))
-    fig.add_trace(go.Scatter(x=df_plot["Date"], y=df_plot["y_pred"], mode="lines", name="Predicted"))
+
+    # If actual values exist, plot them
+    if "y_true" in df_plot.columns and df_plot["y_true"].notna().any():
+        fig.add_trace(go.Scatter(
+            x=df_plot["Date"],
+            y=df_plot["y_true"],
+            mode="lines",
+            name="Actual",
+            line=dict(color="blue")
+        ))
+
+    # Always plot predictions
+    fig.add_trace(go.Scatter(
+        x=df_plot["Date"],
+        y=df_plot["y_pred"],
+        mode="lines+markers",
+        name="Predicted",
+        line=dict(color="red")
+    ))
 
     fig.update_layout(
-        title="Actual vs Predicted Close Prices",
+        title="Future Stock Price Predictions",
         xaxis_title="Date",
-        yaxis_title="Close Price"
+        yaxis_title="Price"
     )
     return fig
+
