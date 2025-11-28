@@ -179,7 +179,7 @@ elif page == "Visualisations":
         st.plotly_chart(plot_macd(df), use_container_width=True)
 
 # =========================================================
-# TRAIN ANN PAGE
+# TRAIN ANN PAGE - FIXED VERSION
 # =========================================================
 elif page == "Train ANN":
     st.title("🤖 Train ANN Model")
@@ -191,7 +191,11 @@ elif page == "Train ANN":
 
     st.subheader("Select Feature Columns")
 
-    default_features = ["Close", "SMA_5", "SMA_10", "SMA_20", "RSI_14", "MACD", "MACD_SIGNAL"]
+    # SIMPLIFIED: Use only Close for better predictions
+    default_features = ["Close"]
+    
+    # Or if you want more features:
+    # default_features = ["Close", "SMA_5", "SMA_10", "SMA_20", "RSI_14", "MACD", "MACD_SIGNAL"]
 
     feature_cols = st.multiselect(
         "Choose features:",
@@ -202,38 +206,93 @@ elif page == "Train ANN":
     if len(feature_cols) == 0:
         st.warning("⚠ Select at least one feature.")
         st.stop()
+    
+    # CRITICAL: Ensure Close is always included
+    if "Close" not in feature_cols:
+        st.error("❌ 'Close' must be included in features for predictions to work.")
+        st.stop()
 
     window_size = st.slider("Window Size (days)", 5, 60, 30)
 
     if st.button("Train Model"):
         with st.spinner("Training ANN..."):
-
+            
+            # ============================================
+            # CRITICAL FIX: CREATE TARGET_CLOSE COLUMN
+            # ============================================
+            df_train = df.copy()
+            
+            # Target is the next day's Close price
+            df_train["Target_Close"] = df_train["Close"].shift(-1)
+            
+            # Drop the last row (it has no target)
+            df_train = df_train.dropna(subset=["Target_Close"])
+            
+            st.info(f"✅ Created Target_Close column (next day's Close price)")
+            st.info(f"📊 Training samples: {len(df_train) - window_size}")
+            
+            # Create windowed dataset
             X, y = create_windowed_dataset(
-                df, feature_cols, target_col="Target_Close", window_size=window_size
+                df_train, feature_cols, target_col="Target_Close", window_size=window_size
             )
+            
+            # Verify data shape
+            st.write(f"X shape: {X.shape}, y shape: {y.shape}")
+            st.write(f"Target (y) - Min: {y.min():.2f}, Max: {y.max():.2f}, Mean: {y.mean():.2f}")
+            
+            # Check if y is constant (this would cause the issue)
+            if y.std() < 0.01:
+                st.error("❌ Target values are nearly constant! Check your data.")
+                st.stop()
 
+            # Scale data
             scaler = ScalerWrapper()
             Xs, ys = scaler.fit_transform(X, y)
 
+            # Build model
             model = build_regression_ann(input_shape=(window_size, len(feature_cols)))
 
+            # Train model
             history = model.fit(
-                Xs, ys, validation_split=0.2, epochs=20, batch_size=32, verbose=0
+                Xs, ys, 
+                validation_split=0.2, 
+                epochs=50,  # Increased from 20
+                batch_size=32, 
+                verbose=0
             )
 
-            st.success("Model trained successfully!")
+            st.success("✅ Model trained successfully!")
 
+            # Save to session state
             st.session_state["model"] = model
             st.session_state["scaler"] = scaler
             st.session_state["history"] = history
             st.session_state["feature_cols"] = feature_cols
             st.session_state["window_size"] = window_size
 
-        st.subheader("Training Performance")
-        st.line_chart({
-            "loss": history.history["loss"],
-            "val_loss": history.history["val_loss"]
+        st.subheader("📈 Training Performance")
+        
+        # Plot training history
+        loss_df = pd.DataFrame({
+            "Training Loss": history.history["loss"],
+            "Validation Loss": history.history["val_loss"]
         })
+        st.line_chart(loss_df)
+        
+        # Show final metrics
+        final_train_loss = history.history["loss"][-1]
+        final_val_loss = history.history["val_loss"][-1]
+        
+        col1, col2 = st.columns(2)
+        col1.metric("Final Training Loss", f"{final_train_loss:.4f}")
+        col2.metric("Final Validation Loss", f"{final_val_loss:.4f}")
+        
+        # Warning if model didn't learn
+        if final_val_loss > y.std() ** 2:
+            st.warning("⚠️ Model may not have learned well. Try:")
+            st.write("- Increasing epochs")
+            st.write("- Adjusting window size")
+            st.write("- Using different features")
 
 # =========================================================
 # PREDICTION PAGE
